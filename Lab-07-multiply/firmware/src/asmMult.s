@@ -14,7 +14,7 @@
 .type nameStr,%gnu_unique_object
     
 /*** STUDENTS: Change the next line to your name!  **/
-nameStr: .asciz "Inigo Montoya"  
+nameStr: .asciz "Edward Guerra Ramirez"  
 
 .align   /* realign so that next mem allocations are on word boundaries */
  
@@ -89,6 +89,157 @@ asmMult:
     
     /*** STUDENTS: Place your code BELOW this line!!! **************/
     
+ /* Prepares the system for multiplication by clearing any relevant variables, 
+    ensuring no residual data from past operations affect the latest result*/
+    LDR r4, =a_Multiplicand
+    STR r0, [r4]
+    LDR r4, =b_Multiplier
+    STR r1, [r4]
+    LDR r4, =rng_Error
+    MOV r5, #0
+    STR r5, [r4]
+    LDR r4, =a_Sign
+    STR r5, [r4]
+    LDR r4, =b_Sign
+    STR r5, [r4]
+    LDR r4, =prod_Is_Neg
+    STR r5, [r4]
+    LDR r4, =a_Abs
+    STR r5, [r4]
+    LDR r4, =b_Abs
+    STR r5, [r4]
+    LDR r4, =init_Product
+    STR r5, [r4]
+    LDR r4, =final_Product
+    STR r5, [r4]
+    
+    /* Validates that r0 and r1 hold the values within the 16-bit signed integers. 
+    Branching to 'range_error' protects against overflow and data corruption by 
+    catching out of range values early. */
+    LDR r6, =32767
+    CMP r0, r6
+    BGT range_error
+    LDR r6, =-32768
+    CMP r0, r6
+    BLT range_error
+    LDR r6, =32767
+    CMP r1, r6
+    BGT range_error
+    LDR r6, =-32768
+    CMP r1, r6
+    BLT range_error
+    
+    /* This facilitate subsequent actions, such as changing the sign of 
+    the result after doing unsigned arithmetic, ascertains and records 
+    the sign (0 for positive, 1 for negative) of each input. */
+    LDR r4, =a_Sign
+    MOV r5, #0
+    CMP r0, #0
+    BGE store_a_sign
+    MOV r5, #1
+    store_a_sign:
+    STR r5, [r4]
+    
+    LDR r4, =b_Sign
+    MOV r5, #0
+    CMP r1, #0
+    BGE store_b_sign
+    MOV r5, #1
+    store_b_sign:
+    STR r5, [r4]
+    
+    /* Ensures both input values are converted to their positive equivalents
+    by checking their sign and conditionally reversing them. This step
+    is essential for any logic that relies on magnitude comparisons or
+    distance calculations, as it neutralizes the effect of negative inputs. */
+    MOV r2, r0
+    MOV r3, r1
+    CMP r2, #0
+    BGE compute_a_abs
+    RSB r2, r2, #0
+    compute_a_abs:
+    CMP r3, #0
+    BGE compute_b_abs
+    RSB r3, r3, #0
+    compute_b_abs:
+    
+    LDR r4, =a_Abs
+    STR r2, [r4]
+    LDR r4, =b_Abs
+    STR r3, [r4]
+    
+    /* Determines if the product will be negative. If either operand is 
+    zero then it doesn't leave a sing. Otherwise, it'll use XOR to to check
+    if it's either positive or negative and set a 0 or 1 respectively. */
+    LDR r4, =prod_Is_Neg
+    MOV r6, #0
+    CMP r2, #0
+    BEQ set_prod_zero
+    CMP r3, #0
+    BEQ set_prod_zero
+    
+    EOR r5, r0, r1
+    TST r5, #0x80000000
+    BNE set_neg_sign
+    B store_prod_sign
+    
+    set_neg_sign:
+    MOV r6, #1
+    B store_prod_sign
+    
+    set_prod_zero:
+    MOV r6, #0
+    
+    store_prod_sign:
+    STR r6, [r4]
+    
+    /* Initializes the result to 0 and sets up a 16-iteration loop to process 
+    each bit of the multiplier, preparing to shift-and-add multiplication 
+    where each bit determines whether to add the multiplicand */
+    
+    MOV r7, #0    /* Initialize product to 0 */
+    MOV r8, #16   /* Loop counter for 16-bit values */
+    
+mul_loop:
+    TST r3, #1      /* Check if LSB of multiplier is set */
+    BEQ skip_add
+    ADD r7, r7, r2  /* Add multiplicand if bit is 1 */
+    skip_add:
+    
+    LSRS r3, r3, #1  /* Shift multiplier right */
+    LSLS r2, r2, #1  /* Shift multiplicand left */
+    SUBS r8, r8, #1
+    BNE mul_loop
+    
+    /* Saves teh current product value to memory for later use */
+    LDR r4, =init_Product
+    STR r7, [r4]
+    
+    /* Checks if the result should be negative; if so, 
+    converts the product to its two's complement */
+    LDR r4, =prod_Is_Neg
+    LDR r5, [r4]
+    CMP r5, #1
+    BNE store_final_product
+    RSB r7, r7, #0 /* If negative, reverses its sign to ensure the correct value */
+    
+    store_final_product:
+    LDR r4, =final_Product
+    STR r7, [r4]
+    
+    /* Copies the final result to r0 */
+    MOV r0, r7
+    
+    B done
+
+range_error:
+    /* Sets the error flag within range error, then clears r0 
+    to indicate failure before exiting */
+    LDR r4, =rng_Error
+    MOV r5, #1
+    STR r5, [r4]
+    MOV r0, #0
+    B done
     
     /*** STUDENTS: Place your code ABOVE this line!!! **************/
 

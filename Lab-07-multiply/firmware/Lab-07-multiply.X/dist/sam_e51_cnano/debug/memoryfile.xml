@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <executable name="dist/sam_e51_cnano/debug/Lab-07-multiply.X.debug.elf">
+    <memory name="program">
+      <units>bytes</units>
+      <length>1048576</length>
+      <used>11107</used>
+      <free>1037469</free>
+    </memory>
+    <memory name="data">
+      <units>bytes</units>
+      <length>262144</length>
+      <used>2539</used>
+      <free>259605</free>
+    </memory>
+  </executable>
+</project>
